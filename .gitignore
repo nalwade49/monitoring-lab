@@ -1,0 +1,12 @@
+# Grafana data
+grafana/data/
+
+# Loki data
+loki/data/
+
+# Docker volumes (if mapped locally)
+data/
+
+# OS
+.DS_Store
+Thumbs.db
