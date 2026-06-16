@@ -173,8 +173,8 @@ docker compose ps
 \`\`\`
 
 Access Grafana at \`http://localhost:3000\`
-- Username: \`admin\`
-- Password: \`admin123\`
+- Username: \`Username\`
+- Password: \`Password\`
 
 Both datasources (Prometheus and Loki) are auto-provisioned on first startup — no manual configuration needed.
 
