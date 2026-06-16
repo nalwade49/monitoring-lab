@@ -18,7 +18,7 @@ A self-driven observability stack built post-CDAC (June 2026), running entirely 
 
 ## Architecture
 
-```
+\`\`\`
 WSL2 Host (Ubuntu)
         │
         ├── /proc, /sys ──────────► Node Exporter :9100 ──► Prometheus :9090 ──┐
@@ -30,13 +30,13 @@ WSL2 Host (Ubuntu)
                                                                      (Dashboards + Alerts)
                                                                                  │
                                                                         Browser: localhost:3000
-```
+\`\`\`
 
 **Data flow:**
-- Node Exporter reads kernel metrics from `/proc` and `/sys` on the WSL2 host
+- Node Exporter reads kernel metrics from \`/proc\` and \`/sys\` on the WSL2 host
 - Prometheus scrapes Node Exporter every 15 seconds and stores metrics as time-series data
-- Promtail tails `/var/log/auth.log` and `/var/log/syslog` continuously
-- Promtail pushes log streams to Loki with labels (`job="auth"`, `job="varlogs"`)
+- Promtail tails \`/var/log/auth.log\` and \`/var/log/syslog\` continuously
+- Promtail pushes log streams to Loki with labels (\`job="auth"\`, \`job="varlogs"\`)
 - Grafana queries both Prometheus (PromQL) and Loki (LogQL) and serves a single UI
 
 ---
@@ -66,7 +66,7 @@ Dashboard auto-refreshes every 1 minute and retains 7 days of metric history.
 
 Promtail tails auth logs from the host and ships them to Loki. In Grafana Explore, security-relevant events can be queried using LogQL:
 
-```
+\`\`\`
 # All auth events
 {job="auth"}
 
@@ -81,7 +81,7 @@ Promtail tails auth logs from the host and ships them to Loki. In Grafana Explor
 
 # Session opened events
 {job="auth"} |= "session opened"
-```
+\`\`\`
 
 These queries surface:
 - Privilege escalation (sudo usage)
@@ -93,24 +93,52 @@ These queries surface:
 
 ## Alerting
 
-Configured a Grafana alert rule on CPU usage:
+Two Grafana alert rules configured with email notifications via Gmail SMTP:
 
-**Rule:** `High CPU Usage`
+### Rule 1 — High CPU Usage
 **Query:**
-```promql
+\`\`\`promql
 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
-```
-**Condition:** Fires when CPU > 80% sustained for 5 minutes
+\`\`\`
+**Condition:** CPU > 80% sustained for 5 minutes
+**Pending period:** 5 minutes (prevents false positives from short spikes)
+**Contact point:** Email (Gmail SMTP)
 
-**Evaluation:** Every 1 minute, 5 minute pending period (prevents false positives from short spikes)
+### Rule 2 — SSH Brute-Force Detection
+**Query:**
+\`\`\`logql
+count_over_time({job="auth"} |= "Failed password" [1m])
+\`\`\`
+**Condition:** More than 5 failed SSH auth attempts within 1 minute
+**Pending period:** None (fires immediately)
+**Contact point:** Email (Gmail SMTP)
 
-This demonstrates the full alerting pipeline — metric collection → threshold evaluation → alert state → notification routing.
+Both rules demonstrate the full pipeline — data collection → threshold/pattern evaluation → alert state → email notification.
+
+---
+
+## Screenshots
+
+### CPU Usage Dashboard — Stress Test
+![CPU Usage](screenshots/CPU-Usage.png)
+
+### High CPU Usage — Pending State
+![CPU Pending](screenshots/High-CPU-Usage-Pending.png)
+
+### High CPU Usage — Alert Email (Firing)
+![CPU Alert](screenshots/CPU-Usage-Alert.png)
+
+### High CPU Usage — Alert Email (Resolved)
+![CPU Resolved](screenshots/CPU-Usage-Alert-Resolved.png)
+
+### SSH Brute-Force — Alert Email (Firing)
+![SSH Alert](screenshots/SSH-Brute-Force-Alert.png)
 
 ---
 
 ## Project Structure
 
-```
+\`\`\`
 monitoring-lab/
 ├── docker-compose.yml
 ├── prometheus/
@@ -119,11 +147,12 @@ monitoring-lab/
 │   └── loki-config.yml         # Storage, schema, ingester, compactor config
 ├── promtail/
 │   └── promtail-config.yml     # Log targets, labels, Loki push endpoint
+├── screenshots/                # Alert firing evidence
 └── grafana/
     └── provisioning/
         └── datasources/
             └── datasources.yml # Auto-provisions Prometheus + Loki on startup
-```
+\`\`\`
 
 ---
 
@@ -131,7 +160,7 @@ monitoring-lab/
 
 **Prerequisites:** Docker, Docker Compose, WSL2 (Ubuntu)
 
-```bash
+\`\`\`bash
 # Clone the repo
 git clone git@github.com:nalwade49/monitoring-lab.git
 cd monitoring-lab
@@ -141,11 +170,11 @@ docker compose up -d
 
 # Verify all containers are running
 docker compose ps
-```
+\`\`\`
 
-Access Grafana at `http://localhost:3000`
-- Username: `admin`
-- Password: `admin123`
+Access Grafana at \`http://localhost:3000\`
+- Username: \`admin\`
+- Password: \`admin123\`
 
 Both datasources (Prometheus and Loki) are auto-provisioned on first startup — no manual configuration needed.
 
@@ -153,7 +182,7 @@ Both datasources (Prometheus and Loki) are auto-provisioned on first startup —
 
 ## Verify the Stack
 
-```bash
+\`\`\`bash
 # Check all 5 containers are up
 docker compose ps
 
@@ -165,7 +194,7 @@ curl http://localhost:3100/ready
 
 # Check Node Exporter metrics endpoint
 curl http://localhost:9100/metrics | grep node_cpu
-```
+\`\`\`
 
 ---
 
@@ -173,11 +202,11 @@ curl http://localhost:9100/metrics | grep node_cpu
 
 | Query | What it detects |
 |---|---|
-| `{job="auth"} \|= "Failed password"` | SSH brute force attempts |
-| `{job="auth"} \|= "sudo"` | Privilege escalation |
-| `{job="auth"} \|= "session opened"` | New session tracking |
-| `{job="auth"} \|= "invalid user"` | Unknown user login attempts |
-| `{job="varlogs"} \|= "error"` | System errors |
+| \`{job="auth"} \|= "Failed password"\` | SSH brute force attempts |
+| \`{job="auth"} \|= "sudo"\` | Privilege escalation |
+| \`{job="auth"} \|= "session opened"\` | New session tracking |
+| \`{job="auth"} \|= "invalid user"\` | Unknown user login attempts |
+| \`{job="varlogs"} \|= "error"\` | System errors |
 
 ---
 
@@ -185,10 +214,10 @@ curl http://localhost:9100/metrics | grep node_cpu
 
 | Query | What it measures |
 |---|---|
-| `100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)` | CPU usage % |
-| `node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100` | Available memory % |
-| `rate(node_network_receive_bytes_total[5m])` | Network receive rate |
-| `node_filesystem_avail_bytes / node_filesystem_size_bytes * 100` | Disk free % |
+| \`100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)\` | CPU usage % |
+| \`node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100\` | Available memory % |
+| \`rate(node_network_receive_bytes_total[5m])\` | Network receive rate |
+| \`node_filesystem_avail_bytes / node_filesystem_size_bytes * 100\` | Disk free % |
 
 ---
 
@@ -207,4 +236,4 @@ curl http://localhost:9100/metrics | grep node_cpu
 
 ## Status
 
-Active — alert notification channels and additional SOC detection rules in progres
+Active — alerting fully configured (CPU threshold + SSH brute-force detection with email notifications via Gmail SMTP). Next: Python log parser with iptables auto-blocking.
