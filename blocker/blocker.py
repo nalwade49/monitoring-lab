@@ -131,6 +131,7 @@ def tail_log(flog: logging.Logger, dry_run: bool) -> None:
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 def main() -> None:
+    global THRESHOLD, WINDOW, AUTH_LOG, BLOCKER_LOG
     parser = argparse.ArgumentParser(description="SSH brute-force auto-blocker")
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -144,7 +145,6 @@ def main() -> None:
     parser.add_argument("--blocker-log", default=BLOCKER_LOG)
     args = parser.parse_args()
 
-    global THRESHOLD, WINDOW, AUTH_LOG, BLOCKER_LOG
     THRESHOLD   = args.threshold
     WINDOW      = args.window
     AUTH_LOG    = args.auth_log

@@ -11,3 +11,10 @@ data/
 .DS_Store
 Thumbs.db
 .env
+
+# Python cache (blocker.py)
+__pycache__/
+blocker/__pycache__/
+*.pyc
+*.pyo
+git_cron.log
