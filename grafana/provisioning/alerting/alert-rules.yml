@@ -1,0 +1,126 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: monitoring
+    folder: Infrastructure
+    interval: 1m
+    rules:
+
+      # ── Rule 1: High CPU Usage ────────────────────────────────────────────────
+      - uid: cpu-threshold-rule
+        title: High CPU Usage
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-ds
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus-ds
+              expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+              instant: false
+              range: true
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              datasource:
+                type: __expr__
+                uid: "-100"
+              conditions:
+                - evaluator:
+                    params: [80]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: High CPU usage on monitoring host
+          description: CPU usage has exceeded 80% for more than 5 minutes.
+        labels: {}
+        isPaused: false
+
+      # ── Rule 2: SSH IP Auto-Blocked ───────────────────────────────────────────
+      - uid: blocker-alert-rule
+        title: SSH IP Auto-Blocked
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki-ds
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: loki-ds
+              expr: 'count_over_time({job="blocker"} |= "BLOCKED" [5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: "-100"
+            model:
+              datasource:
+                type: __expr__
+                uid: "-100"
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: SSH brute-force IP auto-blocked
+          description: >
+            blocker.py has added an iptables DROP rule.
+            Check /var/log/blocker/blocker.log for the blocked IP and attempt count.
+        labels: {}
+        isPaused: false

@@ -62,7 +62,7 @@ services:
     networks:
       - monitoring
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.5.2
     container_name: grafana
     restart: unless-stopped
     volumes:
